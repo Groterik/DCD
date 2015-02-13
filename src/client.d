@@ -283,14 +283,20 @@ bool sendRequest(TcpSocket socket, AutocompleteRequest request)
  */
 AutocompleteResponse getResponse(TcpSocket socket)
 {
-	ubyte[1024 * 16] buffer;
-	auto bytesReceived = socket.receive(buffer);
-	if (bytesReceived == Socket.ERROR)
-		throw new Exception("Incorrect number of bytes received");
-	if (bytesReceived == 0)
-		throw new Exception("Server closed the connection, 0 bytes received");
+	immutable buffSize = 1024 * 1024;
+	ubyte[] buffer = new ubyte[buffSize];
+	auto offset = 0;
+	do
+	{
+		auto bytesReceived = socket.receive(buffer[offset .. $]);
+		if (bytesReceived == Socket.ERROR)
+			throw new Exception("Socket receiving error");
+		if (bytesReceived == 0)
+			break;
+		offset += bytesReceived;
+	} while (offset < buffSize);
 	AutocompleteResponse response;
-	msgpack.unpack(buffer[0..bytesReceived], response);
+	msgpack.unpack(buffer[0..offset], response);
 	return response;
 }
 
